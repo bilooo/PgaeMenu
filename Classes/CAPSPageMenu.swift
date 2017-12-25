@@ -950,7 +950,72 @@ open class CAPSPageMenu: UIViewController, UIScrollViewDelegate, UIGestureRecogn
         oldVC.removeFromParentViewController()
     }
     
-    
+    open func didLayoutSubViews(){
+        controllerScrollView.contentSize = CGSize(width: self.view.frame.width * CGFloat(controllerArray.count), height: self.view.frame.height - menuHeight)
+        
+        didLayoutSubviewsAfterRotation = true
+        
+        //Resize menu items if using as segmented control
+        if useMenuLikeSegmentedControl {
+            menuScrollView.contentSize = CGSize(width: self.view.frame.width, height: menuHeight)
+            
+            // Resize selectionIndicator bar
+            let selectionIndicatorX : CGFloat = CGFloat(currentPageIndex) * (self.view.frame.width / CGFloat(self.controllerArray.count))
+            let selectionIndicatorWidth : CGFloat = self.view.frame.width / CGFloat(self.controllerArray.count)
+            selectionIndicatorView.frame =  CGRect(x: selectionIndicatorX, y: self.selectionIndicatorView.frame.origin.y, width: selectionIndicatorWidth, height: self.selectionIndicatorView.frame.height)
+            // Resize menu items
+            var index : Int = 0
+            
+            for item : MenuItemView in menuItems as [MenuItemView] {
+                item.frame = CGRect(x: self.view.frame.width / CGFloat(controllerArray.count) * CGFloat(index), y: 0.0, width: self.view.frame.width / CGFloat(controllerArray.count), height: menuHeight)
+                item.titleLabel!.frame = CGRect(x: 0.0, y: 0.0, width: self.view.frame.width / CGFloat(controllerArray.count), height: menuHeight)
+                item.menuItemSeparator!.frame = CGRect(x: item.frame.width - (menuItemSeparatorWidth / 2), y: item.menuItemSeparator!.frame.origin.y, width: item.menuItemSeparator!.frame.width, height: item.menuItemSeparator!.frame.height)
+                
+                index += 1
+            }
+        } else if menuItemWidthBasedOnTitleTextWidth && centerMenuItems {
+            self.configureMenuItemWidthBasedOnTitleTextWidthAndCenterMenuItems()
+            let selectionIndicatorX = menuItems[currentPageIndex].frame.minX
+            selectionIndicatorView.frame = CGRect(x: selectionIndicatorX, y: menuHeight - selectionIndicatorHeight, width: menuItemWidths[currentPageIndex], height: selectionIndicatorHeight)
+        } else if centerMenuItems {
+            startingMenuMargin = ((self.view.frame.width - ((CGFloat(controllerArray.count) * menuItemWidth) + (CGFloat(controllerArray.count - 1) * menuMargin))) / 2.0) -  menuMargin
+            
+            if startingMenuMargin < 0.0 {
+                startingMenuMargin = 0.0
+            }
+            
+            let selectionIndicatorX : CGFloat = self.menuItemWidth * CGFloat(currentPageIndex) + self.menuMargin * CGFloat(currentPageIndex + 1) + self.startingMenuMargin
+            selectionIndicatorView.frame =  CGRect(x: selectionIndicatorX, y: self.selectionIndicatorView.frame.origin.y, width: self.selectionIndicatorView.frame.width, height: self.selectionIndicatorView.frame.height)
+            
+            // Recalculate frame for menu items if centered
+            var index : Int = 0
+            
+            for item : MenuItemView in menuItems as [MenuItemView] {
+                if index == 0 {
+                    item.frame = CGRect(x: startingMenuMargin + menuMargin, y: 0.0, width: menuItemWidth, height: menuHeight)
+                } else {
+                    item.frame = CGRect(x: menuItemWidth * CGFloat(index) + menuMargin * CGFloat(index + 1) + startingMenuMargin, y: 0.0, width: menuItemWidth, height: menuHeight)
+                }
+                
+                index += 1
+            }
+        }
+        
+        for view : UIView in controllerScrollView.subviews {
+            view.frame = CGRect(x: self.view.frame.width * CGFloat(currentPageIndex), y: menuHeight, width: controllerScrollView.frame.width, height: self.view.frame.height - menuHeight)
+        }
+        
+        let xOffset : CGFloat = CGFloat(self.currentPageIndex) * controllerScrollView.frame.width
+        controllerScrollView.setContentOffset(CGPoint(x: xOffset, y: controllerScrollView.contentOffset.y), animated: false)
+        
+        let ratio : CGFloat = (menuScrollView.contentSize.width - self.view.frame.width) / (controllerScrollView.contentSize.width - self.view.frame.width)
+        
+        if menuScrollView.contentSize.width > self.view.frame.width {
+            var offset : CGPoint = menuScrollView.contentOffset
+            offset.x = controllerScrollView.contentOffset.x * ratio
+            menuScrollView.setContentOffset(offset, animated: false)
+        }
+    }
     // MARK: - Orientation Change
     
     override open func viewDidLayoutSubviews() {
